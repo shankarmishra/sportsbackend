@@ -160,7 +160,6 @@ exports.getUserProfile = async (req, res) => {
       favoriteGames: user.favoriteGames,
       skillLevel: user.skillLevel,
       achievements: user.achievements,
-      upcomingMatches: user.upcomingMatches,
     });
   } catch (error) {
     res.status(500).json({ message: "Error fetching profile", error: error.message });
@@ -175,19 +174,17 @@ exports.updateUserProfile = async (req, res) => {
       return res.status(404).json({ message: "User not found" });
     }
 
-    const { name, email, profileImage } = req.body;
+    const { name, email, profileImage, favoriteGames, achievements } = req.body;
 
     user.name = name || user.name;
     user.email = email || user.email;
     user.profileImage = profileImage || user.profileImage;
+    user.favoriteGames = favoriteGames || user.favoriteGames;
+    user.achievements = achievements || user.achievements;
 
     const updatedUser = await user.save();
 
-    res.status(200).json({
-      name: updatedUser.name,
-      email: updatedUser.email,
-      profileImage: updatedUser.profileImage,
-    });
+    res.status(200).json(updatedUser);
   } catch (error) {
     res.status(500).json({ message: "Error updating profile", error: error.message });
   }
@@ -197,7 +194,22 @@ exports.updateUserProfile = async (req, res) => {
 exports.getLeaderboard = async (req, res) => {
   try {
     const users = await User.find().sort({ coins: -1 }).limit(10); // Top 10 users by coins
-    res.status(200).json(users);
+
+    // Calculate topDays for each user
+    const leaderboard = users.map((user) => {
+      const today = new Date();
+      const topSince = user.topSince || today; // Assume today if no topSince date
+      const topDays = Math.floor((today - topSince) / (1000 * 60 * 60 * 24)); // Calculate days
+
+      return {
+        id: user._id,
+        name: user.name,
+        coins: user.coins,
+        topDays: topDays,
+      };
+    });
+
+    res.status(200).json(leaderboard);
   } catch (error) {
     res.status(500).json({ message: "Error fetching leaderboard", error: error.message });
   }

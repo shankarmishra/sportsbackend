@@ -58,6 +58,10 @@ const userSchema = new mongoose.Schema(
       type: Date, // Expiry time for the reset token
       default: null,
     },
+    topSince: {
+      type: Date,
+      default: null, // Null if the user has never been at the top
+    },
   },
   {
     timestamps: true, // Automatically add createdAt and updatedAt fields
