@@ -5,6 +5,8 @@ const morgan = require("morgan");
 const connectDB = require("./src/config/db");
 const userRoutes = require("./src/routes/userRoutes");
 const nearbyPlayerRoutes = require("./src/routes/nearbyplayerRoutes"); // Import Nearby Player routes
+const coachRoutes = require("./src/routes/coachRoutes"); // Import Coach routes
+const tournamentRoutes = require("./src/routes/tournamentRoutes"); // Import Tournament routes
 const { protect } = require("./src/middleware/authMiddleware"); // Import the protect middleware
 
 dotenv.config(); // Load environment variables
@@ -22,6 +24,8 @@ app.use(morgan("dev")); // Log HTTP requests
 // Routes
 app.use("/api/users", userRoutes);
 app.use("/api/nearby-players", nearbyPlayerRoutes); // Add Nearby Player routes
+app.use("/api/coaches", coachRoutes); // Add Coach routes
+app.use("/api/tournaments", tournamentRoutes); // Add Tournament routes
 
 // Root route
 app.get("/", (req, res) => {
