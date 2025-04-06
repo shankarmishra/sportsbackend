@@ -9,6 +9,7 @@ const {
   updateUserProfile,
   getLeaderboard,
 } = require("../controllers/userController");
+const { protect } = require("../middleware/authMiddleware"); // Import the protect middleware
 
 const router = express.Router();
 
@@ -27,11 +28,11 @@ router.post("/reset-password/:token", resetPassword);
 // Google login
 router.post("/google-login", googleLogin);
 
-// Get user profile
-router.get("/profile", getUserProfile);
+// Get user profile (protected)
+router.get("/profile", protect, getUserProfile);
 
-// Update user profile
-router.put("/profile", updateUserProfile);
+// Update user profile (protected)
+router.put("/profile", protect, updateUserProfile);
 
 // Get leaderboard
 router.get("/leaderboard", getLeaderboard);

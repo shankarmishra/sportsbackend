@@ -151,10 +151,7 @@ exports.googleLogin = async (req, res) => {
 // Get User Profile
 exports.getUserProfile = async (req, res) => {
   try {
-    const user = await User.findById(req.user.id);
-    if (!user) {
-      return res.status(404).json({ message: "User not found" });
-    }
+    const user = req.user; // Populated by the protect middleware
 
     res.status(200).json({
       name: user.name,

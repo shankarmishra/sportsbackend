@@ -18,15 +18,12 @@ const userSchema = new mongoose.Schema(
     },
     phone: {
       type: String,
-      required: false,
     },
     specialization: {
-      type: String,
-      required: false, // Only required for coaches
+      type: String, // Only required for coaches
     },
     experience: {
-      type: String,
-      required: false, // Only required for coaches
+      type: String, // Only required for coaches
     },
     role: {
       type: String,
