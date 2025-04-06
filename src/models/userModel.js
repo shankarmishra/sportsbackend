@@ -47,8 +47,15 @@ const userSchema = new mongoose.Schema(
       default: null,
     },
     location: {
-      type: String, // Location of the user
-      default: "",
+      type: {
+        type: String,
+        enum: ["Point"], // GeoJSON type
+        default: "Point",
+      },
+      coordinates: {
+        type: [Number], // [longitude, latitude]
+        default: [0, 0],
+      },
     },
     resetPasswordToken: {
       type: String, // Token for password reset
