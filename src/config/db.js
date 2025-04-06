@@ -2,7 +2,7 @@ const mongoose = require("mongoose");
 
 const connectDB = async () => {
   try {
-    await mongoose.connect(process.env.MONGO_URI || "mongodb+srv://Sportsconnect:Sportsconnect%40123@cluster0.46abq.mongodb.net/sportsconnect?retryWrites=true&w=majority&appName=Cluster0,Sportsconnect%40123", {
+    await mongoose.connect(process.env.MONGO_URI || "mongodb+srv://Sportsconnect:Sportsconnect%401232@cluster0.46abq.mongodb.net/Sportsconnect?retryWrites=true&w=majority&appName=Cluster0,Sportsconnects", {
 
     //   useNewUrlParser: true, // Ensures compatibility with the MongoDB connection string
     //   useUnifiedTopology: true, // Enables the new connection management engine

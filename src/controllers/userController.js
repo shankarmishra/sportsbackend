@@ -147,3 +147,61 @@ exports.googleLogin = async (req, res) => {
     res.status(400).json({ message: "Google login failed", error: error.message });
   }
 };
+
+// Get User Profile
+exports.getUserProfile = async (req, res) => {
+  try {
+    const user = await User.findById(req.user.id);
+    if (!user) {
+      return res.status(404).json({ message: "User not found" });
+    }
+
+    res.status(200).json({
+      name: user.name,
+      email: user.email,
+      profileImage: user.profileImage,
+      favoriteGames: user.favoriteGames,
+      skillLevel: user.skillLevel,
+      achievements: user.achievements,
+      upcomingMatches: user.upcomingMatches,
+    });
+  } catch (error) {
+    res.status(500).json({ message: "Error fetching profile", error: error.message });
+  }
+};
+
+// Update User Profile
+exports.updateUserProfile = async (req, res) => {
+  try {
+    const user = await User.findById(req.user.id);
+    if (!user) {
+      return res.status(404).json({ message: "User not found" });
+    }
+
+    const { name, email, profileImage } = req.body;
+
+    user.name = name || user.name;
+    user.email = email || user.email;
+    user.profileImage = profileImage || user.profileImage;
+
+    const updatedUser = await user.save();
+
+    res.status(200).json({
+      name: updatedUser.name,
+      email: updatedUser.email,
+      profileImage: updatedUser.profileImage,
+    });
+  } catch (error) {
+    res.status(500).json({ message: "Error updating profile", error: error.message });
+  }
+};
+
+// Get Leaderboard
+exports.getLeaderboard = async (req, res) => {
+  try {
+    const users = await User.find().sort({ coins: -1 }).limit(10); // Top 10 users by coins
+    res.status(200).json(users);
+  } catch (error) {
+    res.status(500).json({ message: "Error fetching leaderboard", error: error.message });
+  }
+};

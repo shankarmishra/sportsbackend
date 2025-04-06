@@ -5,6 +5,9 @@ const {
   forgotPassword,
   resetPassword,
   googleLogin,
+  getUserProfile,
+  updateUserProfile,
+  getLeaderboard,
 } = require("../controllers/userController");
 
 const router = express.Router();
@@ -23,5 +26,14 @@ router.post("/reset-password/:token", resetPassword);
 
 // Google login
 router.post("/google-login", googleLogin);
+
+// Get user profile
+router.get("/profile", getUserProfile);
+
+// Update user profile
+router.put("/profile", updateUserProfile);
+
+// Get leaderboard
+router.get("/leaderboard", getLeaderboard);
 
 module.exports = router;
