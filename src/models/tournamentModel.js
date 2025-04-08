@@ -19,17 +19,17 @@ const tournamentSchema = new mongoose.Schema(
       required: [true, "Date is required"],
     },
     banner: {
-      type: String, // URL for the banner image
+      type: String, // Could be an image URL or base64
       required: [true, "Banner is required"],
     },
     hostedBy: {
       type: mongoose.Schema.Types.ObjectId,
-      ref: "User", // Reference to the User model
+      ref: "User", // Assuming your coach model is named 'User'
       required: true,
     },
   },
   {
-    timestamps: true, // Automatically add createdAt and updatedAt fields
+    timestamps: true, // Automatically adds createdAt & updatedAt fields
   }
 );
 

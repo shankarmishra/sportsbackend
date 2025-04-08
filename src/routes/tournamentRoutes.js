@@ -5,16 +5,21 @@ const {
   getTournamentById,
   updateTournament,
   deleteTournament,
+  getCoachTournaments, // 👈 Include the new function
 } = require("../controllers/tournamentController");
-const { protect } = require("../middleware/coachMiddleware"); // Ensure this path is correct
+
+const { protect } = require("../middleware/coachMiddleware");
 
 const router = express.Router();
 
 // Create a tournament (protected)
 router.post("/", protect, createTournament);
 
-// Get all tournaments
+// Get all tournaments (public)
 router.get("/", getAllTournaments);
+
+// ✅ Get tournaments hosted by the logged-in coach (protected)
+router.get("/my/tournaments", protect, getCoachTournaments);
 
 // Get a tournament by ID
 router.get("/:id", getTournamentById);

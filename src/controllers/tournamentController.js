@@ -15,7 +15,7 @@ exports.createTournament = async (req, res) => {
       location,
       date,
       banner,
-      hostedBy: req.user.id, // Assuming the user is authenticated
+      hostedBy: req.user.id,
     });
 
     res.status(201).json(tournament);
@@ -27,7 +27,7 @@ exports.createTournament = async (req, res) => {
 // Get All Tournaments
 exports.getAllTournaments = async (req, res) => {
   try {
-    const tournaments = await Tournament.find().sort({ date: 1 }); // Sort by date
+    const tournaments = await Tournament.find().sort({ date: 1 });
     res.status(200).json(tournaments);
   } catch (error) {
     res.status(500).json({ message: "Error fetching tournaments", error: error.message });
@@ -60,7 +60,10 @@ exports.updateTournament = async (req, res) => {
       return res.status(404).json({ message: "Tournament not found" });
     }
 
-    // Update fields
+    if (tournament.hostedBy.toString() !== req.user.id) {
+      return res.status(403).json({ message: "Not authorized to update this tournament" });
+    }
+
     tournament.title = title || tournament.title;
     tournament.description = description || tournament.description;
     tournament.location = location || tournament.location;
@@ -83,9 +86,23 @@ exports.deleteTournament = async (req, res) => {
       return res.status(404).json({ message: "Tournament not found" });
     }
 
+    if (tournament.hostedBy.toString() !== req.user.id) {
+      return res.status(403).json({ message: "Not authorized to delete this tournament" });
+    }
+
     await tournament.remove();
     res.status(200).json({ message: "Tournament deleted successfully" });
   } catch (error) {
     res.status(500).json({ message: "Error deleting tournament", error: error.message });
+  }
+};
+
+// Get Tournaments Hosted by Current Coach
+exports.getCoachTournaments = async (req, res) => {
+  try {
+    const tournaments = await Tournament.find({ hostedBy: req.user.id }).sort({ date: 1 });
+    res.status(200).json(tournaments);
+  } catch (error) {
+    res.status(500).json({ message: "Error fetching tournaments", error: error.message });
   }
 };
