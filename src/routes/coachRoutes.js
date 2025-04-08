@@ -5,7 +5,7 @@ const {
   getCoachProfile,
   updateCoachProfile,
 } = require("../controllers/coachController");
-const { protect } = require("../middleware/authMiddleware"); // Protect routes
+const { protect } = require("../middleware/coachMiddleware"); // Protect routes
 
 const router = express.Router();
 

@@ -69,7 +69,11 @@ exports.loginCoach = async (req, res) => {
 // Get Coach Profile
 exports.getCoachProfile = async (req, res) => {
   try {
-    const coach = req.user; // Populated by the protect middleware
+    const coach = req.user;
+
+    if (!coach) {
+      return res.status(404).json({ message: "Coach not found" });
+    }
 
     res.status(200).json({
       name: coach.name,
@@ -82,6 +86,7 @@ exports.getCoachProfile = async (req, res) => {
     res.status(500).json({ message: "Error fetching profile", error: error.message });
   }
 };
+
 
 // Update Coach Profile
 exports.updateCoachProfile = async (req, res) => {
