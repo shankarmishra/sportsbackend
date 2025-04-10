@@ -193,23 +193,41 @@ exports.updateUserProfile = async (req, res) => {
 // Get Leaderboard
 exports.getLeaderboard = async (req, res) => {
   try {
-    const users = await User.find().sort({ coins: -1 }).limit(10); // Top 10 users by coins
+    const users = await User.find().sort({ coins: -1 }); // Sort all users by coins
 
-    // Calculate topDays for each user
-    const leaderboard = users.map((user) => {
-      const today = new Date();
-      const topSince = user.topSince || today; // Assume today if no topSince date
-      const topDays = Math.floor((today - topSince) / (1000 * 60 * 60 * 24)); // Calculate days
+    const today = new Date();
+    const leaderboard = users.slice(0, 50).map((user) => {
+      const topSince = user.topSince || today;
+      const topDays = Math.floor((today - topSince) / (1000 * 60 * 60 * 24));
 
       return {
         id: user._id,
         name: user.name,
         coins: user.coins,
-        topDays: topDays,
+        topDays,
       };
     });
 
-    res.status(200).json(leaderboard);
+    // Find the logged-in user's rank
+    const currentUserId = req.user._id.toString();
+    const userRankIndex = users.findIndex((user) => user._id.toString() === currentUserId);
+
+    let userRank = null;
+    if (userRankIndex !== -1) {
+      const user = users[userRankIndex];
+      const topSince = user.topSince || today;
+      const topDays = Math.floor((today - topSince) / (1000 * 60 * 60 * 24));
+
+      userRank = {
+        rank: userRankIndex + 1,
+        id: user._id,
+        name: user.name,
+        coins: user.coins,
+        topDays,
+      };
+    }
+
+    res.status(200).json({ leaderboard, userRank });
   } catch (error) {
     res.status(500).json({ message: "Error fetching leaderboard", error: error.message });
   }

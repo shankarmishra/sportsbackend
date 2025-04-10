@@ -34,25 +34,52 @@ exports.findNearbyPlayersAndNotify = async (req, res) => {
     if (nearbyPlayers.length > 0) {
       // Send notification to each player found
       for (let player of nearbyPlayers) {
-        await sendNotification(player.email, {
-          subject: "Nearby players found for your game!",
-          text: `Hey, there are players nearby who play ${game}.`,
-          html: `<p>Hey, there are players nearby who play <strong>${game}</strong>.</p>`
-        });
+        try {
+          await sendNotification(player.email, {
+            subject: `🏸 Let's play ${game}!`,
+            text: `Hey ${player.username || ''}, a ${game} match is happening nearby!`,
+            html: `
+              <div style="font-family: Arial, sans-serif; line-height: 1.6;">
+                <h2>🎮 Game Alert: ${game}</h2>
+                <p>Hey ${player.username || ''},</p>
+                <p>A new game session is scheduled near your location!</p>
+                <ul>
+                  <li><strong>Game:</strong> ${game}</li>
+                  <li><strong>Time:</strong> ${time}</li>
+                  <li><strong>Place:</strong> Shared location coordinates (${latitude}, ${longitude})</li>
+                </ul>
+                <p>Would you like to join?</p>
+                <a href="https://yourappdomain.com/accept?email=${encodeURIComponent(player.email)}&game=${encodeURIComponent(game)}&time=${encodeURIComponent(time)}&lat=${latitude}&long=${longitude}"
+                  style="display:inline-block; padding:10px 15px; background-color:#28a745; color:white; text-decoration:none; border-radius:5px; font-weight:bold;">
+                  ✅ Accept Invitation
+                </a>
+                <p>Happy playing! 🏆</p>
+              </div>
+            `
+          });
+        } catch (notificationError) {
+          console.error(`Error sending notification to player ${player.email}:`, notificationError);
+        }
       }
 
+      // ✅ Respond after sending all notifications
       return res.status(200).json({
         message: `${nearbyPlayers.length} players found and notified.`,
         players: nearbyPlayers,
       });
+
     } else {
+      // ⛔ No players found
       return res.status(404).json({ message: "No nearby players found." });
     }
+
   } catch (error) {
     console.error("Error finding and notifying nearby players:", error);
-    res.status(500).json({ message: "Server error, could not notify players." });
+    res.status(500).json({ message: "Server error, could not notify players.", error: error.message });
   }
 };
+
+// Controller: Get all players
 
 // Controller: Get nearby players within a specified radius
 exports.getNearbyPlayers = async (req, res) => {
@@ -138,6 +165,64 @@ exports.getPlayersByGame = async (req, res) => {
     });
   } catch (err) {
     console.error("Error fetching players by game type:", err);
+    res.status(500).json({
+      message: "Internal server error",
+      error: err.message,
+    });
+  }
+};
+exports.acceptGameInvite = async (req, res) => {
+  try {
+    const { email, game, time, lat, long } = req.query;
+    const acceptingPlayer = await User.findOne({ email });
+
+    if (!acceptingPlayer) {
+      return res.status(404).json({ message: "Accepting player not found" });
+    }
+
+    // Optionally: Find initiator if you track that
+    const nearbyPlayers = await User.find({
+      location: {
+        $geoWithin: {
+          $centerSphere: [
+            [parseFloat(long), parseFloat(lat)],
+            0.1 / 3963.2 // e.g., within 100 meters for initiator
+          ]
+        }
+      },
+      favoriteGames: game,
+    });
+
+    const initiator = nearbyPlayers.find(p => p.email !== email);
+    if (!initiator) {
+      return res.status(404).json({ message: "No initiator found nearby to open a chat" });
+    }
+
+    // Check if chat room already exists
+    let existingRoom = await ChatRoom.findOne({
+      participants: { $all: [acceptingPlayer._id, initiator._id] },
+      game,
+    });
+
+    if (!existingRoom) {
+      existingRoom = await ChatRoom.create({
+        participants: [acceptingPlayer._id, initiator._id],
+        game,
+        time,
+        location: {
+          type: "Point",
+          coordinates: [parseFloat(long), parseFloat(lat)],
+        },
+      });
+    }
+
+    res.status(200).json({
+      message: "Invitation accepted and chat room opened",
+      chatRoom: existingRoom,
+    });
+
+  } catch (err) {
+    console.error("Error accepting game invite:", err);
     res.status(500).json({
       message: "Internal server error",
       error: err.message,
