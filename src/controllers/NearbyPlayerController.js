@@ -4,53 +4,53 @@ const mapServices = require("../../services/mapservices");
 
 // Controller: Find nearby players and notify them
 exports.findNearbyPlayersAndNotify = async (req, res) => {
-  const { latitude, longitude, game, time, address } = req.body;
-
   try {
-    // 1. Validate required inputs
-    if (!latitude || !longitude || !game || !time || !address) {
-      return res.status(400).json({
-        message: "latitude, longitude, game, time, and address are required",
-      });
+    const { latitude, longitude } = req.body.location;
+    const time = req.body.time;
+    const game = req.body.game;
+
+    // Validate required fields
+    if (!latitude || !longitude || !game) {
+      return res.status(400).json({ message: "Missing required fields (latitude, longitude, or game)." });
     }
 
-    // 2. Find nearby players using map service
-    let nearbyPlayers = await mapServices.getNearbyUsers(latitude, longitude, 3, game);
+    console.log("Latitude:", latitude);
+    console.log("Longitude:", longitude);
+    console.log("Game:", game);
 
-    // 3. If none found within 3 km, expand to 7 km
-    if (nearbyPlayers.length === 0) {
-      console.log("No players within 3 km, expanding to 7 km...");
-      nearbyPlayers = await mapServices.getNearbyUsers(latitude, longitude, 7, game);
-    }
-
-    // 4. If still none found
-    if (nearbyPlayers.length === 0) {
-      return res.status(404).json({
-        message: "No players found within 7 km for this game",
-      });
-    }
-
-    // 5. Send notifications
-    await Promise.all(
-      nearbyPlayers.map((player) =>
-        sendNotification(player.email, {
-          subject: `Game Invitation: ${game}`,
-          text: `You're invited to play ${game} at ${time} near ${address}. Tap to join!`,
-        })
-      )
-    );
-
-    // 6. Respond with success
-    res.status(200).json({
-      message: `Notifications sent to ${nearbyPlayers.length} players.`,
-      players: nearbyPlayers,
+    // Find players within a specific radius (e.g., 10 km)
+    const nearbyPlayers = await User.find({
+      location: {
+        $geoWithin: {
+          $centerSphere: [
+            [longitude, latitude],
+            10 / 3963.2 // 10 kilometers radius
+          ]
+        }
+      },
+      favoriteGames: game,
     });
-  } catch (err) {
-    console.error("Error in finding nearby players:", err);
-    res.status(500).json({
-      message: "Internal server error",
-      error: err.message,
-    });
+
+    if (nearbyPlayers.length > 0) {
+      // Send notification to each player found
+      for (let player of nearbyPlayers) {
+        await sendNotification(player.email, {
+          subject: "Nearby players found for your game!",
+          text: `Hey, there are players nearby who play ${game}.`,
+          html: `<p>Hey, there are players nearby who play <strong>${game}</strong>.</p>`
+        });
+      }
+
+      return res.status(200).json({
+        message: `${nearbyPlayers.length} players found and notified.`,
+        players: nearbyPlayers,
+      });
+    } else {
+      return res.status(404).json({ message: "No nearby players found." });
+    }
+  } catch (error) {
+    console.error("Error finding and notifying nearby players:", error);
+    res.status(500).json({ message: "Server error, could not notify players." });
   }
 };
 
@@ -61,7 +61,7 @@ exports.getNearbyPlayers = async (req, res) => {
   try {
     // Validate required inputs
     if (!latitude || !longitude || !radius || !game) {
-      return res.status(400).json({ message: "Missing required fields" });
+      return res.status(400).json({ message: "Missing required fields (latitude, longitude, radius, or game)." });
     }
 
     // Get players from map service
@@ -91,6 +91,7 @@ exports.updatePlayerLocation = async (req, res) => {
   const { userId, latitude, longitude } = req.body;
 
   try {
+    // Validate required fields
     if (!userId || !latitude || !longitude) {
       return res.status(400).json({
         message: "User ID, latitude, and longitude are required",
@@ -123,7 +124,7 @@ exports.getPlayersByGame = async (req, res) => {
 
   try {
     // Get players by game type
-    const players = await User.find({ game: gameType });
+    const players = await User.find({ favoriteGames: gameType });
 
     if (players.length === 0) {
       return res.status(404).json({
