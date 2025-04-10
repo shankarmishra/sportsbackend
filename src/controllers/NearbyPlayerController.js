@@ -1,82 +1,142 @@
 const User = require("../models/userModel");
 const { sendNotification } = require("../utils/notificationUtils");
-
-// Helper: Haversine formula to calculate distance between two lat/lon points
-const calculateDistance = (lat1, lon1, lat2, lon2) => {
-  const toRadians = (deg) => (deg * Math.PI) / 180;
-  const R = 6371; // Earth's radius in km
-
-  const dLat = toRadians(lat2 - lat1);
-  const dLon = toRadians(lon2 - lon1);
-
-  const a =
-    Math.sin(dLat / 2) ** 2 +
-    Math.cos(toRadians(lat1)) *
-      Math.cos(toRadians(lat2)) *
-      Math.sin(dLon / 2) ** 2;
-
-  const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
-  return R * c;
-};
+const mapServices = require("../../services/mapservices");
 
 // Controller: Find nearby players and notify them
 exports.findNearbyPlayersAndNotify = async (req, res) => {
   const { latitude, longitude, game, time, address } = req.body;
 
   try {
-    // Validate required fields
+    // 1. Validate required inputs
     if (!latitude || !longitude || !game || !time || !address) {
       return res.status(400).json({
         message: "latitude, longitude, game, time, and address are required",
       });
     }
 
-    // Find users with matching favorite games
-    const users = await User.find({
-      favoriteGames: { $in: [game] },
-    });
+    // 2. Find nearby players using map service
+    let nearbyPlayers = await mapServices.getNearbyUsers(latitude, longitude, 3, game);
 
-    // Function to filter users within a given radius
-    const filterNearbyPlayers = (radius) => {
-      return users.filter((user) => {
-        if (!user.location || !user.location.coordinates) return false;
-        const [userLat, userLon] = user.location.coordinates; // Assumes format [lat, lon]
-        const distance = calculateDistance(latitude, longitude, userLat, userLon);
-        return distance <= radius;
-      });
-    };
-
-    // First attempt: Find players within 3 km
-    let nearbyPlayers = filterNearbyPlayers(3);
-
-    // If no players found, increase the radius to 7 km
+    // 3. If none found within 3 km, expand to 7 km
     if (nearbyPlayers.length === 0) {
-      console.log("No players found within 3 km. Increasing radius to 7 km...");
-      nearbyPlayers = filterNearbyPlayers(7);
+      console.log("No players within 3 km, expanding to 7 km...");
+      nearbyPlayers = await mapServices.getNearbyUsers(latitude, longitude, 7, game);
     }
 
+    // 4. If still none found
     if (nearbyPlayers.length === 0) {
       return res.status(404).json({
         message: "No players found within 7 km for this game",
       });
     }
 
-    // Send notifications to matched players
+    // 5. Send notifications
     await Promise.all(
       nearbyPlayers.map((player) =>
         sendNotification(player.email, {
           subject: `Game Invitation: ${game}`,
-          text: `You're invited to play ${game} at ${time} near ${address}!`,
+          text: `You're invited to play ${game} at ${time} near ${address}. Tap to join!`,
         })
       )
     );
 
+    // 6. Respond with success
     res.status(200).json({
       message: `Notifications sent to ${nearbyPlayers.length} players.`,
       players: nearbyPlayers,
     });
   } catch (err) {
     console.error("Error in finding nearby players:", err);
+    res.status(500).json({
+      message: "Internal server error",
+      error: err.message,
+    });
+  }
+};
+
+// Controller: Get nearby players within a specified radius
+exports.getNearbyPlayers = async (req, res) => {
+  const { latitude, longitude, radius, game } = req.query;
+
+  try {
+    // Validate required inputs
+    if (!latitude || !longitude || !radius || !game) {
+      return res.status(400).json({ message: "Missing required fields" });
+    }
+
+    // Get players from map service
+    const players = await mapServices.getNearbyUsers(latitude, longitude, radius, game);
+
+    if (players.length === 0) {
+      return res.status(404).json({
+        message: `No players found within ${radius} km for ${game}`,
+      });
+    }
+
+    res.status(200).json({
+      message: `Found ${players.length} players.`,
+      players,
+    });
+  } catch (err) {
+    console.error("Error getting nearby players:", err);
+    res.status(500).json({
+      message: "Internal server error",
+      error: err.message,
+    });
+  }
+};
+
+// Controller: Update player location
+exports.updatePlayerLocation = async (req, res) => {
+  const { userId, latitude, longitude } = req.body;
+
+  try {
+    if (!userId || !latitude || !longitude) {
+      return res.status(400).json({
+        message: "User ID, latitude, and longitude are required",
+      });
+    }
+
+    // Update player's location in the database
+    const updatedPlayer = await User.findByIdAndUpdate(userId, { latitude, longitude }, { new: true });
+
+    if (!updatedPlayer) {
+      return res.status(404).json({ message: "Player not found" });
+    }
+
+    res.status(200).json({
+      message: "Player location updated successfully",
+      player: updatedPlayer,
+    });
+  } catch (err) {
+    console.error("Error updating player location:", err);
+    res.status(500).json({
+      message: "Internal server error",
+      error: err.message,
+    });
+  }
+};
+
+// Controller: Get players by game type
+exports.getPlayersByGame = async (req, res) => {
+  const { gameType } = req.params;
+
+  try {
+    // Get players by game type
+    const players = await User.find({ game: gameType });
+
+    if (players.length === 0) {
+      return res.status(404).json({
+        message: `No players found for the game type: ${gameType}`,
+      });
+    }
+
+    res.status(200).json({
+      message: `Found ${players.length} players for ${gameType}`,
+      players,
+    });
+  } catch (err) {
+    console.error("Error fetching players by game type:", err);
     res.status(500).json({
       message: "Internal server error",
       error: err.message,

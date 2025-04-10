@@ -1,5 +1,6 @@
 const mongoose = require("mongoose");
 const bcrypt = require("bcrypt");
+const crypto = require("crypto");
 
 const userSchema = new mongoose.Schema(
   {
@@ -19,37 +20,45 @@ const userSchema = new mongoose.Schema(
     phone: {
       type: String,
     },
+
+    // Coach-specific fields
     specialization: {
-      type: String, // Only required for coaches
+      type: String,
     },
     experience: {
-      type: String, // Only required for coaches
+      type: String,
     },
+
+    // Role
     role: {
       type: String,
       enum: ["player", "coach", "admin"],
-      default: "player", // Default role is player
+      default: "player",
     },
+
+    // Gamification & profile
     coins: {
       type: Number,
-      default: 0, // Default coins for leaderboard
+      default: 0,
     },
     achievements: {
-      type: [String], // Array of achievements
+      type: [String],
       default: [],
     },
     favoriteGames: {
-      type: [String], // Array of favorite games
+      type: [String],
       default: [],
     },
     profileImage: {
-      type: String, // URL for the profile image
+      type: String,
       default: null,
     },
+
+    // Location (for nearby player search)
     location: {
       type: {
         type: String,
-        enum: ["Point"], // GeoJSON type
+        enum: ["Point"],
         default: "Point",
       },
       coordinates: {
@@ -57,25 +66,32 @@ const userSchema = new mongoose.Schema(
         default: [0, 0],
       },
     },
+
+    // Password reset
     resetPasswordToken: {
-      type: String, // Token for password reset
+      type: String,
       default: null,
     },
     resetPasswordExpire: {
-      type: Date, // Expiry time for the reset token
+      type: Date,
       default: null,
     },
+
+    // Leaderboard top user tracker
     topSince: {
       type: Date,
-      default: null, // Null if the user has never been at the top
+      default: null,
     },
   },
   {
-    timestamps: true, // Automatically add createdAt and updatedAt fields
+    timestamps: true, // createdAt, updatedAt
   }
 );
 
-// Hash password before saving
+// Index location for geospatial queries
+userSchema.index({ location: "2dsphere" });
+
+// 🔐 Hash password before saving
 userSchema.pre("save", async function (next) {
   if (!this.isModified("password")) return next();
   const salt = await bcrypt.genSalt(10);
@@ -83,23 +99,28 @@ userSchema.pre("save", async function (next) {
   next();
 });
 
-// Compare password for login
+// 🔐 Match password during login
 userSchema.methods.matchPassword = async function (enteredPassword) {
   return await bcrypt.compare(enteredPassword, this.password);
 };
 
-// Generate password reset token
+// 🔁 Generate password reset token
 userSchema.methods.getResetPasswordToken = function () {
-  const crypto = require("crypto");
   const resetToken = crypto.randomBytes(20).toString("hex");
 
-  // Hash the token and set it to resetPasswordToken
-  this.resetPasswordToken = crypto.createHash("sha256").update(resetToken).digest("hex");
+  this.resetPasswordToken = crypto
+    .createHash("sha256")
+    .update(resetToken)
+    .digest("hex");
 
-  // Set token expiration time (e.g., 1 hour)
-  this.resetPasswordExpire = Date.now() + 60 * 60 * 1000;
+  this.resetPasswordExpire = Date.now() + 60 * 60 * 1000; // 1 hour
 
   return resetToken;
+};
+
+// ✅ Optional: check if user is a coach
+userSchema.methods.isCoach = function () {
+  return this.role === "coach";
 };
 
 module.exports = mongoose.model("User", userSchema);

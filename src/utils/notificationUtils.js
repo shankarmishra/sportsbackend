@@ -25,5 +25,6 @@ exports.sendNotification = async (email, { subject, text, html }) => {
     console.log(`Notification sent to ${email}`);
   } catch (error) {
     console.error(`Error sending notification to ${email}:`, error);
+    throw error; // Re-throw error to be handled by caller
   }
 };
