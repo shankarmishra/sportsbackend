@@ -35,6 +35,6 @@ router.get("/profile", protect, getUserProfile);
 router.put("/profile", protect, updateUserProfile);
 
 // Get leaderboard
-router.get("/leaderboard", getLeaderboard);
+router.get("/leaderboard",protect, getLeaderboard);
 
 module.exports = router;
