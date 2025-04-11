@@ -8,6 +8,7 @@ const nearbyPlayerRoutes = require("./src/routes/nearbyplayerRoutes"); // Import
 const coachRoutes = require("./src/routes/coachRoutes"); // Import Coach routes
 const tournamentRoutes = require("./src/routes/tournamentRoutes"); // Import Tournament routes
 const { protect } = require("./src/middleware/authMiddleware"); // Import the protect middleware
+const venueRoutes = require("./src/routes/venueRoutes"); // Import Venue routes
 
 dotenv.config(); // Load environment variables
 
@@ -26,6 +27,7 @@ app.use("/api/users", userRoutes);
 app.use("/api/nearby-players", nearbyPlayerRoutes); // Add Nearby Player routes
 app.use("/api/coaches", coachRoutes); // Add Coach routes
 app.use("/api/tournaments", tournamentRoutes); // Add Tournament routes
+app.use("/api/venues", venueRoutes); // Add Venue routes
 
 // Root route
 app.get("/", (req, res) => {
